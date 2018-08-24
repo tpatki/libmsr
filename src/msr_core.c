@@ -54,7 +54,7 @@
 #include "libmsr_error.h"
 #include "libmsr_debug.h"
 
-static int CPU_DEV_VER = 1;
+ static int CPU_DEV_VER = -1;
 
 /// @brief Retrieve unique index of a logical processor.
 ///
@@ -77,7 +77,10 @@ static uint64_t devidx(int socket, int core, int thread)
     core_config(&cores, &threads, &sockets, NULL);
     if (CPU_DEV_VER)
     {
-        return (thread * sockets * cores) + (socket * cores) + core;
+	/* Patki, hack for chameleon */
+        // return (thread * sockets * cores) + (socket * cores) + core;
+        // printf ("\n Patki returning the devidx as %d\n", socket); 
+        return (socket);
     }
     else
     {
@@ -304,21 +307,20 @@ static int find_cpu_top(void)
     }
 
     err = fscanf(cpu0top, "%d", &siblings0);
-    //fprintf(stdout, "q1%d\n", siblings0);
-    if (!err)
-    {
-        err = fscanf(cpu1top, "%d", &siblings1);
-    }
-    //fprintf(stdout, "q1%d\n", siblings1);
+    fprintf(stdout, "sibling0: %d\n", siblings0);
+    err = fscanf(cpu1top, "%d", &siblings1);
+    fprintf(stdout, "sibling1: %d\n", siblings1);
     if (siblings0 == siblings1)
     {
         /* Uses default cpu ordering scheme. */
         CPU_DEV_VER = 1;
+	printf ("\n Setting CPU_DEV_VER as 1\n");
     }
     else
     {
         /* Uses even-odd cpu ordering scheme. */
         CPU_DEV_VER = 0;
+	printf ("\n Setting CPU_DEV_VER as 0\n");
     }
     if (cpu0top != NULL)
     {
@@ -698,7 +700,7 @@ int finalize_msr(void)
             {
                 *fileDescriptor = 0;
             }
-        }
+	}
     }
     memhdlr_finalize();
     return 0;
@@ -800,7 +802,11 @@ int load_socket_batch(off_t msr, uint64_t **val, int batchnum)
 #endif
     if (CPU_DEV_VER == 1)
     {
-        for (dev_idx = 0, val_idx = 0; dev_idx < NUM_DEVS; dev_idx += coresPerSocket * threadsPerCore, val_idx++)
+	printf("Reading with CPU_DEV_VER=1\n");	
+	/*Patki, hacking for Chameleon interleaving */
+        // threadsPerCore = 1;
+    //     for (dev_idx = 0, val_idx = 0; dev_idx < NUM_DEVS; dev_idx += coresPerSocket * threadsPerCore, val_idx++)
+        for (dev_idx = 0, val_idx = 0; dev_idx < 2; dev_idx++, val_idx++)
         {
             create_batch_op(msr, dev_idx, &val[val_idx], batchnum);
         }
